@@ -1,0 +1,133 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RabinCipher.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="RabinCipher.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Шифр Рабина"
+        Width="900" Height="620"
+        MinWidth="800" MinHeight="560">
+
+    <Window.Styles>
+        <FluentTheme />
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="12">
+
+        <!-- ── Строка 0: параметры ключа ─────────────────────────────── -->
+        <Border Grid.Row="0" Background="#F0F4FF" CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="*,*,*,*">
+
+                <!-- p -->
+                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                    <TextBlock Text="p (простое, p≡3 mod 4)" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding PText}"
+                             Watermark="например: 7"
+                             Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- q -->
+                <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                    <TextBlock Text="q (простое, q≡3 mod 4)" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding QText}"
+                             Watermark="например: 11"
+                             Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- b -->
+                <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                    <TextBlock Text="b (0 ≤ b &lt; n)" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding BText}"
+                             Watermark="например: 0"
+                             Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <!-- n (вычисляется автоматически) -->
+                <StackPanel Grid.Column="3">
+                    <TextBlock Text="n = p·q (автоматически)" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding NText}"
+                             IsReadOnly="True"
+                             Background="#E8EDF8"
+                             Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ── Строка 1: режим + кнопки ──────────────────────────────── -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+
+            <RadioButton Content="Шифрование" IsChecked="{Binding IsEncryptMode}"
+                         VerticalAlignment="Center"/>
+            <RadioButton Content="Дешифрование" IsChecked="{Binding IsDecryptMode}"
+                         VerticalAlignment="Center"/>
+
+            <Separator Width="1" Height="24" Background="#CCC" Margin="4,0"/>
+
+            <Button Content="📂  Открыть файл" Click="OpenFileClick"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Padding="12,6"/>
+            <Button Content="▶  Выполнить" Click="RunClick"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Background="#3A7BD5" Foreground="White"
+                    Padding="12,6"/>
+            <Button Content="💾  Сохранить результат" Click="SaveFileClick"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Padding="12,6"/>
+        </StackPanel>
+
+        <!-- ── Строка 2: статус + прогресс ───────────────────────────── -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,8">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="12" Foreground="#444"
+                       TextWrapping="Wrap" Margin="0,0,0,4"/>
+            <ProgressBar Value="{Binding Progress}"
+                         Minimum="0" Maximum="100"
+                         Height="16" IsVisible="{Binding IsBusy}"/>
+        </StackPanel>
+
+        <!-- ── Строка 3: превью ───────────────────────────────────────── -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,8,*">
+
+            <!-- Исходный -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0" Text="Исходный файл (первые 128 байт, десятичные)"
+                           FontWeight="SemiBold" FontSize="12" Margin="0,0,0,4"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding SourcePreview}"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             FontFamily="Courier New"
+                             FontSize="12"
+                             Background="#FAFAFA"
+                             BorderBrush="#CCC"
+                             AcceptsReturn="True"/>
+                </ScrollViewer>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="8" ResizeDirection="Columns" Background="Transparent"/>
+
+            <!-- Результат -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0" Text="Результат (первые блоки, десятичные числа)"
+                           FontWeight="SemiBold" FontSize="12" Margin="0,0,0,4"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding ResultPreview}"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             FontFamily="Courier New"
+                             FontSize="12"
+                             Background="#FAFAFA"
+                             BorderBrush="#CCC"
+                             AcceptsReturn="True"/>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+
+        <!-- ── Строка 4: подсказка ────────────────────────────────────── -->
+        <TextBlock Grid.Row="4"
+                   Text="Алгоритм Рабина · c = m(m+b) mod n · Дешифрование: КТО + Тонелли-Шенкс + расш. алгоритм Евклида"
+                   FontSize="11" Foreground="#888" Margin="0,6,0,0" HorizontalAlignment="Center"/>
+    </Grid>
+</Window>
