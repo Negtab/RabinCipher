@@ -6,15 +6,14 @@
 ## О проекте
 Программа для шифрования и дешифрования файлов любых расширений:
 
-### Ссылка на программу: 
+### Ссылка на программу: https://github.com/Negtab/RabinCipher/blob/master/RabinCipher/bin/Release/net10.0/win-x64/publish/RabinCipher.exe
 
-### Ссылка на папку с кодом: 
+### Ссылка на папку с кодом: https://github.com/Negtab/RabinCipher/blob/master/RabinCipher/Models/Crypto.cs
 
-### Ссылка на отчет: 
+### Ссылка на отчет: https://github.com/Negtab/RabinCipher/blob/master/RabinCipher/отчет.docx
 
-### Ссылка на папку с примерами для шифрования: 
+### Ссылка на папку с примерами для шифрования: https://github.com/Negtab/RabinCipher/blob/master/RabinCipher/Примеры
 
-### Ссылка на таблицу: 
 
 # 📘 Инструкция по использованию программы
 ## Шаг 1. Введите начальное состояние ключа
