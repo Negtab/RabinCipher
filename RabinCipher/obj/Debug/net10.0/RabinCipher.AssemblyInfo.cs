@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RabinCipher")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7e6e065e6b135d422ab3ab3ecf4128bccb160b25")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d933869c316b450047e1f17cfb08a5739909514")]
 [assembly: System.Reflection.AssemblyProductAttribute("RabinCipher")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RabinCipher")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

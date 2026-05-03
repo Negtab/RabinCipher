@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "NpRg3PeQjgk=",
+  "dgSpecHash": "SRoDb3ChA/w=",
   "success": true,
   "projectFilePath": "/Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/RabinCipher.csproj",
   "expectedPackageFiles": [
@@ -26,16 +26,12 @@
     "/Users/artemmihlin/.nuget/packages/harfbuzzsharp.nativeassets.webassembly/8.3.1.1/harfbuzzsharp.nativeassets.webassembly.8.3.1.1.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/harfbuzzsharp.nativeassets.win32/8.3.1.1/harfbuzzsharp.nativeassets.win32.8.3.1.1.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/microcom.runtime/0.11.0/microcom.runtime.0.11.0.nupkg.sha512",
-    "/Users/artemmihlin/.nuget/packages/microsoft.net.illink.tasks/10.0.3/microsoft.net.illink.tasks.10.0.3.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/skiasharp/2.88.9/skiasharp.2.88.9.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/skiasharp.nativeassets.linux/2.88.9/skiasharp.nativeassets.linux.2.88.9.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/skiasharp.nativeassets.macos/2.88.9/skiasharp.nativeassets.macos.2.88.9.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/skiasharp.nativeassets.webassembly/2.88.9/skiasharp.nativeassets.webassembly.2.88.9.nupkg.sha512",
     "/Users/artemmihlin/.nuget/packages/skiasharp.nativeassets.win32/2.88.9/skiasharp.nativeassets.win32.2.88.9.nupkg.sha512",
-    "/Users/artemmihlin/.nuget/packages/tmds.dbus.protocol/0.21.2/tmds.dbus.protocol.0.21.2.nupkg.sha512",
-    "/Users/artemmihlin/.nuget/packages/microsoft.netcore.app.runtime.win-x64/10.0.3/microsoft.netcore.app.runtime.win-x64.10.0.3.nupkg.sha512",
-    "/Users/artemmihlin/.nuget/packages/microsoft.aspnetcore.app.runtime.win-x64/10.0.3/microsoft.aspnetcore.app.runtime.win-x64.10.0.3.nupkg.sha512",
-    "/Users/artemmihlin/.nuget/packages/microsoft.netcore.app.host.win-x64/10.0.3/microsoft.netcore.app.host.win-x64.10.0.3.nupkg.sha512"
+    "/Users/artemmihlin/.nuget/packages/tmds.dbus.protocol/0.21.2/tmds.dbus.protocol.0.21.2.nupkg.sha512"
   ],
   "logs": [
     {
@@ -47,8 +43,7 @@
       "filePath": "/Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/RabinCipher.csproj",
       "libraryId": "Tmds.DBus.Protocol",
       "targetGraphs": [
-        "net10.0",
-        "net10.0/win-x64"
+        "net10.0"
       ]
     }
   ]
