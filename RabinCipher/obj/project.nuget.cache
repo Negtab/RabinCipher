@@ -37,7 +37,7 @@
     {
       "code": "NU1903",
       "level": "Warning",
-      "message": "У пакета \"Tmds.DBus.Protocol\" 0.21.2 есть известная уязвимость https://github.com/advisories/GHSA-xrw6-gwf8-vvr9 (уровень серьезности: высокий)",
+      "message": "Package 'Tmds.DBus.Protocol' 0.21.2 has a known high severity vulnerability, https://github.com/advisories/GHSA-xrw6-gwf8-vvr9",
       "projectPath": "/Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/RabinCipher.csproj",
       "warningLevel": 1,
       "filePath": "/Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/RabinCipher.csproj",

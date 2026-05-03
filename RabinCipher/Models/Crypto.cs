@@ -51,33 +51,30 @@ public class Crypto
         }
     }
 
-    // Шифрование одного числа: c = m*(m+b) mod n
+    // ── Шифрование: c = m*(m+b) mod n ────────────────────────────────────────
     public BigInteger Cipher(BigInteger m)
     {
         if (_n == 0) throw new InvalidOperationException("Ключи не заданы.");
         return m * (m + _b) % _n;
     }
 
-    // Дешифрование: возвращает список возможных открытых текстов
+    // ── Дешифрование — возвращает до 4 кандидатов ────────────────────────
     public List<BigInteger> Decipher(BigInteger c)
     {
         if (_n == 0) throw new InvalidOperationException("Ключи не заданы.");
 
-        // d = b^2 + 4c  (дискриминант)
-        BigInteger d = (_b * _b + 4 * c) % _n;
+        BigInteger d = _b * _b + 4 * c;                     // дискриминант
 
-        // Корни mod p
-        List<BigInteger> rootsP = SqrtMod(d % _p, _p);
+        List<BigInteger> rootsP = SqrtMod(d, _p);
         if (rootsP.Count == 0) return new List<BigInteger>();
 
-        // Корни mod q
-        List<BigInteger> rootsQ = SqrtMod(d % _q, _q);
+        List<BigInteger> rootsQ = SqrtMod(d, _q);
         if (rootsQ.Count == 0) return new List<BigInteger>();
 
-        // inv(2) mod n для формулы m = (-b ± sqrt(d)) * inv(2) mod n
         BigInteger inv2 = ModInverse(2, _n);
 
-        HashSet<BigInteger> solutions = new HashSet<BigInteger>();
+        var solutions = new HashSet<BigInteger>();
+
         foreach (var rp in rootsP)
         {
             foreach (var rq in rootsQ)
@@ -85,6 +82,8 @@ public class Crypto
                 BigInteger sqrtD = ChineseRemainder(rp, _p, rq, _q);
                 BigInteger m1 = ((-_b + sqrtD) % _n + _n) % _n * inv2 % _n;
                 BigInteger m2 = ((-_b - sqrtD) % _n + _n) % _n * inv2 % _n;
+
+                // Убрана проверка на m <= 256 – теперь добавляются все кандидаты
                 solutions.Add(m1);
                 solutions.Add(m2);
             }
@@ -93,19 +92,20 @@ public class Crypto
         return new List<BigInteger>(solutions);
     }
 
-    // Квадратный корень по модулю простого p (алгоритм Тонелли-Шенкса)
-    private List<BigInteger> SqrtMod(BigInteger a, BigInteger p)
+    // ── sqrt(a) mod p ─────────────────────────────────────────────────────────
+    private static List<BigInteger> SqrtMod(BigInteger a, BigInteger p)
     {
         a = ((a % p) + p) % p;
         if (a == 0) return new List<BigInteger> { 0 };
         if (!IsQuadraticResidue(a, p)) return new List<BigInteger>();
         BigInteger r = TonelliShanks(a, p);
         var res = new List<BigInteger> { r };
-        if (r != 0) res.Add(p - r);
+        BigInteger r2 = p - r;
+        if (r2 != r) res.Add(r2);
         return res;
     }
 
-    // Проверка простоты (пробное деление — подходит для небольших чисел лабораторной работы)
+    // ── Проверка простоты (пробное деление) ───────────────────────────────────
     public static bool IsPrime(BigInteger n)
     {
         if (n < 2) return false;
@@ -116,70 +116,101 @@ public class Crypto
         return true;
     }
 
-    // Критерий Эйлера: a — квадратичный вычет mod p ⟺ a^((p-1)/2) ≡ 1 (mod p)
+    // ── Критерий Эйлера: a — квадратичный вычет mod p ────────────────────────
     private static bool IsQuadraticResidue(BigInteger a, BigInteger p)
     {
-        if (a % p == 0) return true;
-        return BigInteger.ModPow(a, (p - 1) / 2, p) == 1;
+        a = ((a % p) + p) % p;
+        if (a == 0) return true;
+        // Используем СВОЁ быстрое возведение в степень
+        return ModPow(a, (p - 1) / 2, p) == 1;
     }
 
-    // Алгоритм Тонелли-Шенкса
+    // ── Быстрое возведение в степень (метод двоичного возведения) ────────────
+    // a^exp mod m за O(log exp) умножений
+    public static BigInteger ModPow(BigInteger a, BigInteger exp, BigInteger m)
+    {
+        if (m == 1) return 0;
+        BigInteger result = 1;
+        a %= m;
+        if (a < 0) a += m;
+
+        while (exp > 0)
+        {
+            // Если текущий бит exp равен 1 — умножаем результат на a
+            if ((exp & 1) == 1)
+                result = result * a % m;
+            // Сдвигаем exp вправо на 1 бит (делим на 2)
+            exp >>= 1;
+            // Возводим основание в квадрат
+            a = a * a % m;
+        }
+        return result;
+    }
+
+    // ── Тонелли-Шенкс: sqrt(a) mod p ─────────────────────────────────────────
     private static BigInteger TonelliShanks(BigInteger a, BigInteger p)
     {
         a = ((a % p) + p) % p;
         if (a == 0) return 0;
-        if (p == 2) return a % 2;
+        if (p == 2) return a & 1;
 
-        // Частный случай p ≡ 3 (mod 4)
+        // Условие задачи: p ≡ 3 (mod 4) — корень вычисляется за одно возведение в степень
         if (p % 4 == 3)
-            return BigInteger.ModPow(a, (p + 1) / 4, p);
+            return ModPow(a, (p + 1) / 4, p); // используем СВОЁ ModPow
 
-        // p-1 = Q * 2^S
+        // Общий случай Тонелли-Шенкса (на случай других p)
         BigInteger q = p - 1, s = 0;
         while (q % 2 == 0) { q /= 2; s++; }
 
-        // Ищем квадратичный невычет z
         BigInteger z = 2;
         while (IsQuadraticResidue(z, p)) z++;
 
         BigInteger M = s;
-        BigInteger c = BigInteger.ModPow(z, q, p);
-        BigInteger t = BigInteger.ModPow(a, q, p);
-        BigInteger r = BigInteger.ModPow(a, (q + 1) / 2, p);
+        BigInteger cc = ModPow(z, q, p);   // своё ModPow
+        BigInteger t  = ModPow(a, q, p);   // своё ModPow
+        BigInteger r  = ModPow(a, (q + 1) / 2, p); // своё ModPow
 
         while (true)
         {
             if (t == 1) return r;
-            BigInteger t2i = t; BigInteger i = 0;
-            do { t2i = t2i * t2i % p; i++; } while (t2i != 1);
-
-            BigInteger b = c;
+            BigInteger t2i = t, i = 1;
+            for (; i < M; i++) { t2i = t2i * t2i % p; if (t2i == 1) break; }
+            BigInteger b = cc;
             for (BigInteger j = 0; j < M - i - 1; j++) b = b * b % p;
-            M = i; c = b * b % p; t = t * c % p; r = r * b % p;
+            M = i; cc = b * b % p; t = t * cc % p; r = r * b % p;
         }
     }
 
-    // Расширенный алгоритм Евклида: обратный элемент a^(-1) mod m
+    // ── Расширенный алгоритм Евклида ─────────────────────────────────────────
+    // Находит x, y такие что: a*x + m*y = gcd(a, m)
+    // Возвращает x — обратный элемент a по модулю m (если gcd == 1)
     public static BigInteger ModInverse(BigInteger a, BigInteger m)
     {
-        BigInteger m0 = m, x = 1, y = 0;
-        if (m == 1) return 0;
-        while (a > 1)
+        BigInteger old_r = a, r = m;
+        BigInteger old_s = 1, s = 0; // коэффициент при a (x Безу)
+
+        while (r != 0)
         {
-            BigInteger q = a / m;
-            (a, m) = (m, a % m);
-            (x, y) = (y, x - q * y);
+            BigInteger q = old_r / r;
+
+            (old_r, r) = (r, old_r - q * r);
+            (old_s, s) = (s, old_s - q * s);
         }
-        return x < 0 ? x + m0 : x;
+
+        // old_r == gcd(a, m), old_s == x такой что a*x ≡ gcd (mod m)
+        if (old_r != 1)
+            throw new ArgumentException($"Обратного элемента не существует: gcd({a}, {m}) = {old_r}");
+
+        return ((old_s % m) + m) % m;
     }
 
-    // Китайская теорема об остатках: x ≡ rp (mod p), x ≡ rq (mod q)
+    // ── КТО: x ≡ rp (mod p), x ≡ rq (mod q) ─────────────────────────────────
     private static BigInteger ChineseRemainder(BigInteger rp, BigInteger p, BigInteger rq, BigInteger q)
     {
         BigInteger diff = ((rq - rp) % q + q) % q;
-        BigInteger k = diff * ModInverse(p % q, q) % q;
-        BigInteger x = rp + p * k;
-        BigInteger n = p * q;
+        BigInteger k    = diff * ModInverse(p % q, q) % q; // расш. Евклид для inv(p mod q, q)
+        BigInteger x    = rp + p * k;
+        BigInteger n    = p * q;
         return ((x % n) + n) % n;
     }
 }

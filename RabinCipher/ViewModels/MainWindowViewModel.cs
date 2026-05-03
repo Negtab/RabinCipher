@@ -15,6 +15,8 @@ public class MainWindowViewModel : INotifyPropertyChanged
 {
     private readonly Crypto _crypto = new();
 
+    private byte[]? _sourceBytes;
+
     private string _pText = "";
     private string _qText = "";
     private string _bText = "";
@@ -27,184 +29,256 @@ public class MainWindowViewModel : INotifyPropertyChanged
     private string _openedFilePath = "";
     private bool _isEncryptMode = true;
 
-    public string PText { get => _pText; set { _pText = value; OnPropertyChanged(); TryUpdateN(); } }
-    public string QText { get => _qText; set { _qText = value; OnPropertyChanged(); TryUpdateN(); } }
-    public string BText { get => _bText; set { _bText = value; OnPropertyChanged(); } }
+    private string _pError = "";
+    private string _qError = "";
+    private string _bError = "";
+
+    // ── Свойства ошибок ──────────────────────────────────────────────────────
+    public string PError { get => _pError; set { _pError = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPError)); OnPropertyChanged(nameof(CanRun)); } }
+    public string QError { get => _qError; set { _qError = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasQError)); OnPropertyChanged(nameof(CanRun)); } }
+    public string BError { get => _bError; set { _bError = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasBError)); OnPropertyChanged(nameof(CanRun)); } }
+    public bool HasPError => !string.IsNullOrEmpty(_pError);
+    public bool HasQError => !string.IsNullOrEmpty(_qError);
+    public bool HasBError => !string.IsNullOrEmpty(_bError);
+
+    // ── Основные свойства ────────────────────────────────────────────────────
+    public string PText
+    {
+        get => _pText;
+        set { _pText = value; OnPropertyChanged(); ValidateP(); TryUpdateN(); ValidateB(); }
+    }
+    public string QText
+    {
+        get => _qText;
+        set { _qText = value; OnPropertyChanged(); ValidateQ(); TryUpdateN(); ValidateB(); }
+    }
+    public string BText
+    {
+        get => _bText;
+        set { _bText = value; OnPropertyChanged(); ValidateB(); }
+    }
     public string NText { get => _nText; set { _nText = value; OnPropertyChanged(); } }
     public string StatusText { get => _statusText; set { _statusText = value; OnPropertyChanged(); } }
     public string SourcePreview { get => _sourcePreview; set { _sourcePreview = value; OnPropertyChanged(); } }
     public string ResultPreview { get => _resultPreview; set { _resultPreview = value; OnPropertyChanged(); } }
     public double Progress { get => _progress; set { _progress = value; OnPropertyChanged(); } }
-    public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsNotBusy)); } }
+    public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsNotBusy)); OnPropertyChanged(nameof(CanRun)); } }
     public bool IsNotBusy => !_isBusy;
-    public bool IsEncryptMode { get => _isEncryptMode; set { _isEncryptMode = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDecryptMode)); } }
-    public bool IsDecryptMode => !_isEncryptMode;
-    public string OpenedFilePath { get => _openedFilePath; set { _openedFilePath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasFile)); } }
-    public bool HasFile => !string.IsNullOrEmpty(_openedFilePath);
+    public bool CanRun => IsNotBusy && HasFile
+                          && !HasPError && !string.IsNullOrWhiteSpace(_pText)
+                          && !HasQError && !string.IsNullOrWhiteSpace(_qText)
+                          && !HasBError && !string.IsNullOrWhiteSpace(_bText);
 
-    // Последний обработанный результат (байты для сохранения)
-    public byte[]? LastResult { get;  set; }
+    public bool IsEncryptMode
+    {
+        get => _isEncryptMode;
+        set { _isEncryptMode = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDecryptMode)); RefreshSourcePreview(); }
+    }
+    public bool IsDecryptMode => !_isEncryptMode;
+    public string OpenedFilePath { get => _openedFilePath; set { _openedFilePath = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasFile)); OnPropertyChanged(nameof(CanRun)); } }
+    public bool HasFile => !string.IsNullOrEmpty(_openedFilePath);
+    public byte[]? LastResult { get; set; }
+
+    // ── Валидация ─────────────────────────────────────────────────────────────
+    private void ValidateP()
+    {
+        if (string.IsNullOrWhiteSpace(_pText)) { PError = ""; return; }
+        if (!BigInteger.TryParse(_pText, out var p) || p < 2) { PError = "Введите целое число ≥ 2."; return; }
+        if (!Crypto.IsPrime(p)) { PError = $"{p} — не простое."; return; }
+        if (p % 4 != 3) { PError = $"p ≢ 3 (mod 4). Подходит: {NextValidPrime(p)}."; return; }
+        if (BigInteger.TryParse(_qText, out var q) && q == p) { PError = "p и q должны различаться."; return; }
+        PError = "";
+    }
+
+    private void ValidateQ()
+    {
+        if (string.IsNullOrWhiteSpace(_qText)) { QError = ""; return; }
+        if (!BigInteger.TryParse(_qText, out var q) || q < 2) { QError = "Введите целое число ≥ 2."; return; }
+        if (!Crypto.IsPrime(q)) { QError = $"{q} — не простое."; return; }
+        if (q % 4 != 3) { QError = $"q ≢ 3 (mod 4). Подходит: {NextValidPrime(q)}."; return; }
+        if (BigInteger.TryParse(_pText, out var p) && p == q) { QError = "p и q должны различаться."; return; }
+        if (BigInteger.TryParse(_pText, out var p2) && p2 > 1 && p2 * q <= 255)
+        { QError = $"n = p·q = {p2 * q} ≤ 255. Нужно n > 255."; return; }
+        QError = "";
+    }
+
+    private void ValidateB()
+    {
+        if (string.IsNullOrWhiteSpace(_bText)) { BError = ""; return; }
+        if (!BigInteger.TryParse(_bText, out var b)) { BError = "Введите целое число."; return; }
+        if (b < 1) { BError = "b должно быть натуральным (b ≥ 1)."; return; }
+        if (!string.IsNullOrEmpty(_nText) && BigInteger.TryParse(_nText, out var n) && n > 0 && b >= n)
+        { BError = $"b < n = {n}."; return; }
+        BError = "";
+    }
+
+    private static BigInteger NextValidPrime(BigInteger start)
+    {
+        BigInteger c = start + 1;
+        while (!Crypto.IsPrime(c) || c % 4 != 3) c++;
+        return c;
+    }
 
     private void TryUpdateN()
     {
-        if (BigInteger.TryParse(_pText, out var p) && BigInteger.TryParse(_qText, out var q) && p > 0 && q > 0)
+        if (BigInteger.TryParse(_pText, out var p) && BigInteger.TryParse(_qText, out var q) && p > 1 && q > 1)
             NText = (p * q).ToString();
         else
             NText = "";
     }
 
+    // ── Файл ─────────────────────────────────────────────────────────────────
     public void SetFile(string path, byte[] bytes)
     {
+        _sourceBytes = bytes;
         OpenedFilePath = path;
-        SourcePreview = BuildBytePreview(bytes, 128);
+        RefreshSourcePreview();
         ResultPreview = "";
         StatusText = $"Файл открыт: {Path.GetFileName(path)} ({bytes.Length} байт)";
         LastResult = null;
     }
 
-    public async Task<byte[]?> EncryptAsync(byte[] sourceBytes, IProgress<double> progress, CancellationToken ct)
+    private void RefreshSourcePreview()
     {
-        if (!TryApplyKeys(out string err)) { StatusText = "Ошибка: " + err; return null; }
+        if (_sourceBytes == null) return;
 
-        return await Task.Run(() =>
+        if (IsDecryptMode)
         {
-            var result = new List<byte>();
-            int total = sourceBytes.Length;
-            for (int i = 0; i < total; i++)
+            // Зашифрованный файл — текстовый, числа через пробел
+            // Показываем первые 64 числа как есть
+            try
             {
-                ct.ThrowIfCancellationRequested();
-                BigInteger m = sourceBytes[i];
-                BigInteger c = _crypto.Cipher(m);
-                // Сохраняем шифртекст: 4 байта на каждый байт открытого текста (n < 2^32 в учебном случае)
-                byte[] encoded = EncodeNumber(c);
-                result.AddRange(encoded);
-                progress.Report((i + 1.0) / total * 100);
+                string text = Encoding.UTF8.GetString(_sourceBytes);
+                var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                int show = Math.Min(parts.Length, 64);
+                SourcePreview = string.Join(" ", parts[..show]) + (parts.Length > 64 ? " …" : "");
             }
-            return result.ToArray();
-        }, ct);
+            catch
+            {
+                SourcePreview = "(не удалось прочитать как текст)";
+            }
+        }
+        else
+        {
+            // Исходный файл — байты в десятичном виде
+            SourcePreview = BuildBytePreview(_sourceBytes, 128);
+        }
     }
 
-    public async Task<byte[]?> DecryptAsync(byte[] encBytes, IProgress<double> progress, CancellationToken ct)
+    // ── Шифрование ───────────────────────────────────────────────────────────
+    // Формат зашифрованного файла: числа через пробел в текстовом виде
+    // Например: "615 23 176 2945 ..."
+    public async Task<byte[]?> EncryptAsync(byte[] src, IProgress<double> progress, CancellationToken ct)
     {
         if (!TryApplyKeys(out string err)) { StatusText = "Ошибка: " + err; return null; }
 
-        int chunkSize = GetChunkSize();
-        if (encBytes.Length % chunkSize != 0)
+        if (_crypto.N <= 255)
         {
-            StatusText = $"Ошибка: размер файла не кратен {chunkSize} байтам (размер блока для текущего n).";
+            StatusText = "Ошибка: n = p·q должно быть > 255.";
             return null;
         }
 
         return await Task.Run(() =>
         {
-            var result = new List<byte>();
-            int total = encBytes.Length / chunkSize;
-            for (int i = 0; i < total; i++)
+            var sb = new StringBuilder();
+            for (int i = 0; i < src.Length; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                BigInteger c = DecodeNumber(encBytes, i * chunkSize, chunkSize);
+
+                BigInteger m = src[i];
+                BigInteger c = _crypto.Cipher(m);
+
+                if (i > 0) sb.Append(' ');
+                sb.Append(c);
+
+                progress.Report((i + 1.0) / src.Length * 100);
+            }
+            return Encoding.UTF8.GetBytes(sb.ToString());
+        }, ct);
+    }
+
+    // ── Дешифрование ─────────────────────────────────────────────────────────
+    // Читаем числа через пробел, для каждого берём первый корень < 256
+    public async Task<byte[]?> DecryptAsync(byte[] enc, IProgress<double> progress, CancellationToken ct)
+    {
+        if (!TryApplyKeys(out string err)) { StatusText = "Ошибка: " + err; return null; }
+
+        string text;
+        try { text = Encoding.UTF8.GetString(enc); }
+        catch { StatusText = "Ошибка: файл не является текстовым (зашифрованным)."; return null; }
+
+        var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) { StatusText = "Ошибка: файл пуст или имеет неверный формат."; return null; }
+
+        return await Task.Run(() =>
+        {
+            var result = new List<byte>(parts.Length);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                if (!BigInteger.TryParse(parts[i], out BigInteger c))
+                    throw new InvalidDataException($"Токен {i}: '{parts[i]}' не является числом.");
+
                 var candidates = _crypto.Decipher(c);
-                // Выбираем корректный корень: значение в диапазоне [0, 255]
+
+                // Берём ПЕРВЫЙ корень < 256 и сразу останавливаемся
                 BigInteger chosen = -1;
                 foreach (var cand in candidates)
-                    if (cand >= 0 && cand <= 255) { chosen = cand; break; }
-                if (chosen < 0)
                 {
-                    // Берём первый доступный — пользователь сам разберётся
-                    chosen = candidates.Count > 0 ? candidates[0] : 0;
+                    if (cand >= 0 && cand < 256)
+                    {
+                        chosen = cand;
+                        break; // первый подходящий — правильный, дальше не смотрим
+                    }
                 }
-                result.Add((byte)(chosen & 0xFF));
-                progress.Report((i + 1.0) / total * 100);
+
+                if (chosen < 0)
+                    throw new InvalidDataException(
+                        $"Токен {i} (c={c}): ни один корень не попал в [0, 255]. " +
+                        "Проверьте правильность ключей p, q, b.");
+
+                result.Add((byte)chosen);
+                progress.Report((i + 1.0) / parts.Length * 100);
             }
             return result.ToArray();
         }, ct);
     }
 
+    // ── Вспомогательные ──────────────────────────────────────────────────────
     private bool TryApplyKeys(out string error)
     {
         error = "";
         try
         {
-            if (!BigInteger.TryParse(_pText, out var p) || p <= 0)
-            { error = "Некорректное значение p."; return false; }
-            if (!BigInteger.TryParse(_qText, out var q) || q <= 0)
-            { error = "Некорректное значение q."; return false; }
-            if (p == q)
-            { error = "p и q должны быть различными."; return false; }
-
-            _crypto.P = p;
-            _crypto.Q = q;
-
-            if (!BigInteger.TryParse(_bText, out var b) || b < 0)
-            { error = "Некорректное значение b (должно быть ≥ 0)."; return false; }
-            _crypto.B = b;
-
+            _crypto.P = BigInteger.Parse(_pText);
+            _crypto.Q = BigInteger.Parse(_qText);
+            _crypto.B = BigInteger.Parse(_bText);
             return true;
         }
-        catch (Exception ex)
-        {
-            error = ex.Message;
-            return false;
-        }
-    }
-
-    // Размер блока шифртекста в байтах (минимум, вмещающий N)
-    private int GetChunkSize()
-    {
-        if (!BigInteger.TryParse(_nText, out var n) || n == 0) return 4;
-        int bytes = (int)Math.Ceiling(BigInteger.Log(n, 256));
-        // Округляем до 1, 2, 4, 8
-        if (bytes <= 1) return 1;
-        if (bytes <= 2) return 2;
-        if (bytes <= 4) return 4;
-        return 8;
-    }
-
-    private byte[] EncodeNumber(BigInteger c)
-    {
-        int size = GetChunkSize();
-        byte[] buf = new byte[size];
-        byte[] raw = c.ToByteArray(); // little-endian
-        for (int i = 0; i < Math.Min(raw.Length, size); i++)
-            buf[i] = raw[i];
-        return buf;
-    }
-
-    private BigInteger DecodeNumber(byte[] data, int offset, int size)
-    {
-        byte[] buf = new byte[size + 1]; // +1 чтобы быть положительным
-        Array.Copy(data, offset, buf, 0, size);
-        return new BigInteger(buf);
+        catch (Exception ex) { error = ex.Message; return false; }
     }
 
     public static string BuildBytePreview(byte[] bytes, int maxBytes)
     {
         var sb = new StringBuilder();
         int count = Math.Min(bytes.Length, maxBytes);
-        for (int i = 0; i < count; i++)
-        {
-            sb.Append(bytes[i]);
-            if (i < count - 1) sb.Append(' ');
-        }
+        for (int i = 0; i < count; i++) { sb.Append(bytes[i]); if (i < count - 1) sb.Append(' '); }
         if (bytes.Length > maxBytes) sb.Append(" …");
         return sb.ToString();
     }
 
-    public static string BuildEncryptedPreview(byte[] bytes, int chunkSize, int maxChunks)
+    // Для ResultPreview при шифровании — первые maxNums чисел из текстового содержимого
+    public static string BuildEncryptedTextPreview(byte[] encBytes, int maxNums)
     {
-        var sb = new StringBuilder();
-        int total = bytes.Length / chunkSize;
-        int show = Math.Min(total, maxChunks);
-        for (int i = 0; i < show; i++)
+        try
         {
-            byte[] buf = new byte[chunkSize + 1];
-            Array.Copy(bytes, i * chunkSize, buf, 0, chunkSize);
-            BigInteger val = new BigInteger(buf);
-            sb.Append(val);
-            if (i < show - 1) sb.Append(' ');
+            string text = Encoding.UTF8.GetString(encBytes);
+            var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            int show = Math.Min(parts.Length, maxNums);
+            return string.Join(" ", parts[..show]) + (parts.Length > maxNums ? " …" : "");
         }
-        if (total > maxChunks) sb.Append(" …");
-        return sb.ToString();
+        catch { return "(ошибка чтения)"; }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

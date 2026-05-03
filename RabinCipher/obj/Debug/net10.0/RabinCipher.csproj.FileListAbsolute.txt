@@ -72,3 +72,4 @@
 /Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/obj/Debug/net10.0/RabinCipher.pdb
 /Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/obj/Debug/net10.0/RabinCipher.genruntimeconfig.cache
 /Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/obj/Debug/net10.0/ref/RabinCipher.dll
+/Users/artemmihlin/Documents/Labs/Rider/RabinCipher/RabinCipher/obj/Debug/net10.0/RabinCipher.sourcelink.json

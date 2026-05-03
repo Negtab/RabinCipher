@@ -23,15 +23,14 @@ public partial class MainWindow : Window
         DataContext = new MainWindowViewModel();
     }
 
-    // ─── Открыть файл ────────────────────────────────────────────────────────
+    // ── Открыть файл ─────────────────────────────────────────────────────────
     private async void OpenFileClick(object? sender, RoutedEventArgs e)
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Открыть файл для шифрования / дешифрования",
+            Title = "Открыть файл",
             AllowMultiple = false
         });
-
         if (files.Count == 0) return;
 
         try
@@ -42,11 +41,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Vm.StatusText = "Ошибка открытия файла: " + ex.Message;
+            Vm.StatusText = "Ошибка открытия: " + ex.Message;
         }
     }
 
-    // ─── Выполнить (шифр / дешифр) ───────────────────────────────────────────
+    // ── Выполнить ────────────────────────────────────────────────────────────
     private async void RunClick(object? sender, RoutedEventArgs e)
     {
         if (_sourceBytes == null || _sourceBytes.Length == 0)
@@ -66,6 +65,7 @@ public partial class MainWindow : Window
         try
         {
             byte[]? result;
+
             if (Vm.IsEncryptMode)
             {
                 Vm.StatusText = "Шифрование…";
@@ -73,9 +73,10 @@ public partial class MainWindow : Window
                 if (result != null)
                 {
                     Vm.LastResult = result;
-                    int chunk = GetChunkSize();
-                    Vm.ResultPreview = MainWindowViewModel.BuildEncryptedPreview(result, chunk, 64);
-                    Vm.StatusText = $"Шифрование завершено. Размер: {_sourceBytes.Length} → {result.Length} байт.";
+                    // Показываем первые 64 числа из зашифрованного текста
+                    Vm.ResultPreview = MainWindowViewModel.BuildEncryptedTextPreview(result, 64);
+                    Vm.StatusText = $"Готово. Исходный: {_sourceBytes.Length} байт → " +
+                                    $"Зашифрованный: {result.Length} байт (текст с числами).";
                 }
             }
             else
@@ -86,13 +87,13 @@ public partial class MainWindow : Window
                 {
                     Vm.LastResult = result;
                     Vm.ResultPreview = MainWindowViewModel.BuildBytePreview(result, 128);
-                    Vm.StatusText = $"Дешифрование завершено. Размер: {_sourceBytes.Length} → {result.Length} байт.";
+                    Vm.StatusText = $"Готово. Расшифровано {result.Length} байт.";
                 }
             }
         }
         catch (OperationCanceledException)
         {
-            Vm.StatusText = "Операция отменена.";
+            Vm.StatusText = "Отменено.";
         }
         catch (Exception ex)
         {
@@ -105,48 +106,35 @@ public partial class MainWindow : Window
         }
     }
 
-    // ─── Сохранить результат ─────────────────────────────────────────────────
+    // ── Сохранить результат ──────────────────────────────────────────────────
     private async void SaveFileClick(object? sender, RoutedEventArgs e)
     {
         if (Vm.LastResult == null)
         {
-            Vm.StatusText = "Нет результата для сохранения. Сначала выполните операцию.";
+            Vm.StatusText = "Нет результата для сохранения.";
             return;
         }
 
-        string suggestedName = Vm.IsEncryptMode ? "encrypted.bin" : "decrypted.dat";
+        // При шифровании предлагаем .bin (но это текстовый файл с числами)
+        // При дешифровании — оригинальное расширение пользователь выберет сам
+        string suggested = Vm.IsEncryptMode ? "encrypted.bin" : "decrypted_file";
 
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Сохранить результат",
-            SuggestedFileName = suggestedName,
-            FileTypeChoices = new[]
-            {
-                new FilePickerFileType("Все файлы") { Patterns = new[] { "*.*" } }
-            }
+            SuggestedFileName = suggested,
+            FileTypeChoices = new[] { new FilePickerFileType("Все файлы") { Patterns = new[] { "*.*" } } }
         });
-
         if (file == null) return;
 
         try
         {
-            var path = file.TryGetLocalPath()!;
-            await File.WriteAllBytesAsync(path, Vm.LastResult);
-            Vm.StatusText = $"Файл сохранён: {path}";
+            await File.WriteAllBytesAsync(file.TryGetLocalPath()!, Vm.LastResult);
+            Vm.StatusText = $"Сохранено: {file.TryGetLocalPath()}";
         }
         catch (Exception ex)
         {
             Vm.StatusText = "Ошибка сохранения: " + ex.Message;
         }
-    }
-
-    private int GetChunkSize()
-    {
-        if (!System.Numerics.BigInteger.TryParse(Vm.NText, out var n) || n == 0) return 4;
-        int bytes = (int)Math.Ceiling(System.Numerics.BigInteger.Log(n, 256));
-        if (bytes <= 1) return 1;
-        if (bytes <= 2) return 2;
-        if (bytes <= 4) return 4;
-        return 8;
     }
 }
